@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>재고 조사 — Inventory Audit</title>
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.18.6/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1023,7 +1023,7 @@ async function startCamera(){
     const tracks=scanStream.getVideoTracks();
     if(tracks.length) torchTrack=tracks[0];
 
-    // Start ZXing decode loop
+    // Start Quagga2 decode loop
     startDecodeLoop(video);
   }catch(e){
     toast('카메라 접근 오류: '+e.message,'error');
@@ -1048,34 +1048,64 @@ async function toggleTorch(){
   }catch(e){toast('손전등 미지원 기기입니다','error');torchOn=false;}
 }
 
-// Decode loop using ZXing
+// Decode loop using Quagga2 (better iOS Safari support)
 function startDecodeLoop(video){
-  if(typeof ZXing==='undefined'){
-    toast('ZXing 라이브러리 로딩 실패','error');return;
+  if(typeof Quagga==='undefined'){
+    toast('스캔 라이브러리 로딩 실패. 새로고침 해주세요.','error');return;
   }
-  const hints=new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
-    ZXing.BarcodeFormat.EAN_13,
-    ZXing.BarcodeFormat.EAN_8,
-    ZXing.BarcodeFormat.CODE_128,
-    ZXing.BarcodeFormat.CODE_39,
-    ZXing.BarcodeFormat.UPC_A,
-  ]);
-  hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-  const reader=new ZXing.BrowserMultiFormatReader(hints);
-  scanControls=reader;
 
-  reader.decodeFromVideoElement(video,(result,err)=>{
-    if(result){
-      const barcode=result.getText();
-      const now=Date.now();
-      // debounce: same barcode within 1.5s → skip
-      if(barcode===lastBarcode&&now-lastBarcodeTime<1500) return;
-      lastBarcode=barcode;
-      lastBarcodeTime=now;
-      onBarcodeScanned(barcode);
+  const viewport = document.getElementById('scan-viewport');
+
+  Quagga.init({
+    inputStream:{
+      type:'LiveStream',
+      target: viewport,
+      constraints:{
+        facingMode:'environment',
+        width:{ideal:1280},
+        height:{ideal:720},
+      },
+    },
+    locator:{ patchSize:'medium', halfSample:true },
+    numOfWorkers: 0,
+    frequency: 10,
+    decoder:{
+      readers:[
+        'ean_reader',
+        'ean_8_reader',
+        'code_128_reader',
+        'code_39_reader',
+        'upc_reader',
+      ],
+      multiple: false,
+    },
+    locate: true,
+  }, function(err){
+    if(err){
+      toast('스캐너 초기화 실패: '+err,'error');
+      return;
     }
+    Quagga.start();
+    // Hide quagga's own video since we have our own
+    const qVideo = viewport.querySelector('video');
+    if(qVideo && qVideo !== video){
+      qVideo.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;';
+    }
+    const canvas = viewport.querySelector('canvas.drawingBuffer');
+    if(canvas) canvas.style.display='none';
   });
+
+  Quagga.onDetected(function(data){
+    const barcode = data.codeResult.code;
+    if(!barcode) return;
+    const now = Date.now();
+    if(barcode===lastBarcode && now-lastBarcodeTime<1500) return;
+    lastBarcode = barcode;
+    lastBarcodeTime = now;
+    onBarcodeScanned(barcode);
+  });
+
+  scanControls = { stop: ()=>{ try{ Quagga.stop(); }catch(e){} } };
 }
 
 function onBarcodeScanned(barcode){
