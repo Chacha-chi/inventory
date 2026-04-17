@@ -265,8 +265,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   <div class="sidebar-stats">
     <div class="ss"><div class="ss-num" id="sb-total">0</div><div class="ss-label">전체 라인</div></div>
     <div class="ss"><div class="ss-num" id="sb-sku">0</div><div class="ss-label">고유 SKU</div></div>
-    <div class="ss"><div class="ss-num green" id="sb-counted">0</div><div class="ss-label">카운팅 완료</div></div>
-    <div class="ss"><div class="ss-num red" id="sb-diff">0</div><div class="ss-label">불일치</div></div>
+    <div class="ss"><div class="ss-num green" id="sb-counted">0</div><div class="ss-label">카운팅 Done</div></div>
+    <div class="ss"><div class="ss-num red" id="sb-diff">0</div><div class="ss-label">불Match</div></div>
   </div>
 </aside>
 
@@ -345,8 +345,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         <div class="filter-bar">
           <input type="text" placeholder="코드 / 제품명 검색..." id="count-search" oninput="renderCountTable()">
           <button class="f-btn active" onclick="setCountStatus('all',this)">전체</button>
-          <button class="f-btn" onclick="setCountStatus('done',this)">완료</button>
-          <button class="f-btn" onclick="setCountStatus('todo',this)">미완료</button>
+          <button class="f-btn" onclick="setCountStatus('done',this)">Done</button>
+          <button class="f-btn" onclick="setCountStatus('todo',this)">Pending</button>
         </div>
 
         <div class="sec-hd">
@@ -373,23 +373,30 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div class="empty" id="result-empty"><div class="empty-icon">📊</div><div>카운팅 데이터가 없습니다</div></div>
       <div id="result-main" style="display:none;">
 
+        <div style="margin-bottom:16px;">
+          <button onclick="exportStocktaking()" style="width:100%;padding:12px;background:#1D9E75;color:white;border:none;border-radius:var(--border-radius-lg);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans);">📥 재고조사 파일 다운로드 (xlsx)</button>
+          <div style="margin-top:6px;font-size:11px;color:var(--text3);text-align:center;">storecode · slocCode · productcode · stocktakingQty · comment 형식</div>
+        </div>
+
         <div class="summary-grid">
           <div class="s-card"><div class="s-card-num" id="r-total">0</div><div class="s-card-label">전체 라인</div></div>
-          <div class="s-card"><div class="s-card-num green" id="r-match">0</div><div class="s-card-label">일치</div></div>
-          <div class="s-card"><div class="s-card-num red" id="r-short">0</div><div class="s-card-label">부족</div></div>
-          <div class="s-card"><div class="s-card-num" style="color:var(--blue)" id="r-over">0</div><div class="s-card-label">초과</div></div>
-          <div class="s-card"><div class="s-card-num amber" id="r-none">0</div><div class="s-card-label">미카운팅</div></div>
+          <div class="s-card"><div class="s-card-num green" id="r-match">0</div><div class="s-card-label">Match</div></div>
+          <div class="s-card"><div class="s-card-num red" id="r-short">0</div><div class="s-card-label">Short</div></div>
+          <div class="s-card"><div class="s-card-num" style="color:var(--blue)" id="r-over">0</div><div class="s-card-label">Over</div></div>
+          <div class="s-card"><div class="s-card-num amber" id="r-none">0</div><div class="s-card-label">Not counted</div></div>
         </div>
+
+        <div id="sloc-totals" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;"></div>
 
         <div class="tab-row" id="result-tabs"></div>
 
         <div class="filter-bar">
           <input type="text" placeholder="검색..." id="result-search" oninput="renderResultTable()">
           <button class="f-btn active" onclick="setResultFilter('all',this)">전체</button>
-          <button class="f-btn" onclick="setResultFilter('match',this)">일치</button>
-          <button class="f-btn" onclick="setResultFilter('short',this)">부족</button>
-          <button class="f-btn" onclick="setResultFilter('over',this)">초과</button>
-          <button class="f-btn" onclick="setResultFilter('none',this)">미카운팅</button>
+          <button class="f-btn" onclick="setResultFilter('match',this)">Match</button>
+          <button class="f-btn" onclick="setResultFilter('short',this)">Short</button>
+          <button class="f-btn" onclick="setResultFilter('over',this)">Over</button>
+          <button class="f-btn" onclick="setResultFilter('none',this)">Not counted</button>
         </div>
 
         <div class="table-wrap">
@@ -401,10 +408,10 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           </table>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:16px;">
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
           <button class="btn" onclick="exportCSV('all')">전체 CSV</button>
-          <button class="btn" onclick="exportCSV('mismatch')">불일치만 CSV</button>
-          <button class="btn primary" onclick="window.print()">인쇄</button>
+          <button class="btn" onclick="exportCSV('mismatch')">불Match만 CSV</button>
+          <button class="btn" onclick="window.print()">인쇄</button>
         </div>
       </div>
     </div>
@@ -447,7 +454,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
     </div>
 
     <div class="scan-stats-row">
-      <div class="scan-stat"><div class="scan-stat-num green" id="sc-scanned">0</div><div class="scan-stat-label">스캔 완료</div></div>
+      <div class="scan-stat"><div class="scan-stat-num green" id="sc-scanned">0</div><div class="scan-stat-label">스캔 Done</div></div>
       <div class="scan-stat"><div class="scan-stat-num" id="sc-total">0</div><div class="scan-stat-label">전체 SKU</div></div>
       <div class="scan-stat"><div class="scan-stat-num" id="sc-notfound">0</div><div class="scan-stat-label">미등록 바코드</div></div>
     </div>
@@ -529,10 +536,10 @@ function slocBadge(sloc){
 }
 
 function statusBadge(sys, real){
-  if(real===null) return `<span class="status-badge sb-warn"><span class="badge-dot"></span>미완료</span>`;
-  if(real===sys)  return `<span class="status-badge sb-ok"><span class="badge-dot"></span>일치</span>`;
-  if(real>sys)    return `<span class="status-badge sb-over"><span class="badge-dot"></span>초과</span>`;
-  return `<span class="status-badge sb-short"><span class="badge-dot"></span>부족</span>`;
+  if(real===null) return `<span class="status-badge sb-warn"><span class="badge-dot"></span>Pending</span>`;
+  if(real===sys)  return `<span class="status-badge sb-ok"><span class="badge-dot"></span>Match</span>`;
+  if(real>sys)    return `<span class="status-badge sb-over"><span class="badge-dot"></span>Over</span>`;
+  return `<span class="status-badge sb-short"><span class="badge-dot"></span>Short</span>`;
 }
 
 function diffCell(sys, real){
@@ -587,6 +594,7 @@ function processFile(file){
       const colQty    = keys.find(k=>k.toLowerCase().includes('qty'))||'qty';
       const colSpec   = keys.find(k=>k.toLowerCase().includes('spec'))||'specification';
       const colStore  = keys.find(k=>k.toLowerCase().includes('store name'))||'Store Name';
+      const colStoreCode = keys.find(k=>k.toLowerCase().includes('store code'))||'Store Code';
 
       stockData=[];
       rows.forEach(r=>{
@@ -597,7 +605,8 @@ function processFile(file){
         const sys=parseInt(r[colQty])||0;
         const spec=String(r[colSpec]||'').trim();
         const storeName=String(r[colStore]||'').trim();
-        if(productCode) stockData.push({sloc,productCode,productName,barcode,sys,spec,storeName});
+        const storeCode=String(r[colStoreCode]||'').trim();
+        if(productCode) stockData.push({sloc,productCode,productName,barcode,sys,spec,storeName,storeCode});
       });
 
       renderSetupLoaded();
@@ -699,7 +708,7 @@ function renderCountTable(){
     return matchSloc&&matchSearch&&matchStatus;
   });
   const done=filtered.filter(r=>realQty(countData[key(r)])!==null).length;
-  document.getElementById('count-sub').textContent=`${filtered.length}개 표시 중 · ${done}개 완료`;
+  document.getElementById('count-sub').textContent=`${filtered.length}개 표시 중 · ${done}개 Done`;
 
   filtered.forEach(r=>{
     const k=key(r);
@@ -745,7 +754,7 @@ function setCountStatus(f,el){
 
 function bulkBoxCount(){
   const sloc=activeCountSloc==='ALL'?'전체':activeCountSloc;
-  const n=parseInt(prompt(`[${sloc}] 미완료 항목에 박스 수를 일괄 입력합니다.\n박스 수:`));
+  const n=parseInt(prompt(`[${sloc}] Pending 항목에 박스 수를 일괄 입력합니다.\n박스 수:`));
   if(isNaN(n)||n<0){toast('올바른 숫자를 입력해주세요','error');return;}
   let cnt=0;
   stockData.filter(r=>activeCountSloc==='ALL'||r.sloc===activeCountSloc).forEach(r=>{
@@ -791,6 +800,53 @@ function renderResultSummary(){
   document.getElementById('r-short').textContent=short;
   document.getElementById('r-over').textContent=over;
   document.getElementById('r-none').textContent=none;
+  renderSlocTotals();
+}
+
+function renderSlocTotals(){
+  const el=document.getElementById('sloc-totals');
+  if(!el) return;
+  const slocs=['SALES','DP','HOLDING','DEFECT'];
+  const bgColors={SALES:'var(--green-dim)',DP:'var(--blue-dim)',HOLDING:'var(--amber-dim)',DEFECT:'var(--red-dim)'};
+  const textColors={SALES:'var(--green)',DP:'var(--blue)',HOLDING:'var(--amber)',DEFECT:'var(--red)'};
+  el.innerHTML=slocs.map(s=>{
+    const rows=stockData.filter(r=>r.sloc===s);
+    if(!rows.length) return '';
+    const total=rows.length;
+    const counted=rows.filter(r=>realQty(countData[key(r)])!==null).length;
+    const matchCnt=rows.filter(r=>{const rq=realQty(countData[key(r)]);return rq!==null&&rq===r.sys;}).length;
+    const shortCnt=rows.filter(r=>{const rq=realQty(countData[key(r)]);return rq!==null&&rq<r.sys;}).length;
+    const overCnt=rows.filter(r=>{const rq=realQty(countData[key(r)]);return rq!==null&&rq>r.sys;}).length;
+    const pct=Math.round(counted/total*100);
+    const barW=pct+'%';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--border-radius-lg);padding:12px 14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="background:${bgColors[s]};color:${textColors[s]};font-size:11px;font-weight:500;padding:3px 10px;border-radius:4px;font-family:var(--mono);">${s}</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--text2);">${counted}<span style="color:var(--text3);">/${total} SKU</span></span>
+      </div>
+      <div style="background:var(--surface2);border-radius:999px;height:5px;margin-bottom:10px;overflow:hidden;">
+        <div style="height:100%;border-radius:999px;background:${textColors[s]};width:${barW};transition:width 0.4s;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;text-align:center;">
+        <div style="background:var(--surface2);border-radius:6px;padding:5px 4px;">
+          <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text)">${pct}%</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:1px;">Progress</div>
+        </div>
+        <div style="background:var(--green-dim);border-radius:6px;padding:5px 4px;">
+          <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--green)">${matchCnt}</div>
+          <div style="font-size:9px;color:var(--green);opacity:0.7;margin-top:1px;">Match</div>
+        </div>
+        <div style="background:var(--red-dim);border-radius:6px;padding:5px 4px;">
+          <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--red)">${shortCnt}</div>
+          <div style="font-size:9px;color:var(--red);opacity:0.7;margin-top:1px;">Short</div>
+        </div>
+        <div style="background:var(--blue-dim);border-radius:6px;padding:5px 4px;">
+          <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--blue)">${overCnt}</div>
+          <div style="font-size:9px;color:var(--blue);opacity:0.7;margin-top:1px;">Over</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderResultTable(){
@@ -843,7 +899,7 @@ function exportCSV(mode){
   rows.forEach(r=>{
     const rq=realQty(countData[key(r)]);
     const diff=rq!==null?rq-r.sys:'';
-    const status=rq===null?'미카운팅':diff===0?'일치':diff>0?'초과':'부족';
+    const status=rq===null?'Not counted':diff===0?'Match':diff>0?'Over':'Short';
     csv+=`"${r.sloc}","${r.productCode}","${r.productName}","${r.spec}",${r.sys},${rq!==null?rq:''},${diff},${status}\n`;
   });
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
@@ -851,7 +907,49 @@ function exportCSV(mode){
   a.href=URL.createObjectURL(blob);
   a.download=`inventory_${mode}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
-  toast('CSV 다운로드 완료','success');
+  toast('CSV 다운로드 Done','success');
+}
+
+function exportStocktaking(){
+  if(!stockData.length){ toast('먼저 시스템 재고를 불러오세요','error'); return; }
+
+  // storecode: from first row's storeName or 'JP1004'
+  const storeCode = stockData[0]?.storeCode || stockData[0]?.storeName || '';
+
+  // Build rows: one row per stockData line
+  const rows = stockData.map(r => {
+    const cd = countData[key(r)];
+    const rq = realQty(cd);
+    return {
+      storecode: storeCode,
+      slocCode: r.sloc,
+      productcode: r.productCode,
+      stocktakingQty: rq !== null ? rq : '',
+      comment: rq === null ? 'Not counted' : rq === r.sys ? '' : rq > r.sys ? 'Over +'+(rq-r.sys) : 'Short '+(rq-r.sys)
+    };
+  });
+
+  // Build xlsx using SheetJS
+  if(typeof XLSX === 'undefined'){ toast('XLSX 라이브러리 로딩 중, 잠시 후 다시 시도해주세요','error'); return; }
+
+  const wsData = [
+    ['storecode','slocCode','productcode','stocktakingQty','comment'],
+    ...rows.map(r => [r.storecode, r.slocCode, r.productcode, r.stocktakingQty, r.comment])
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:14},{wch:12},{wch:14},{wch:16},{wch:20}
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'stocktaking');
+
+  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  XLSX.writeFile(wb, `stocktaking_${date}.xlsx`);
+  toast('재고조사 파일 다운로드 Done','success');
 }
 
 function resetAll(){
@@ -859,7 +957,7 @@ function resetAll(){
   stockData=[];countData={};
   document.getElementById('setup-loaded').style.display='none';
   updateSidebar();
-  toast('초기화 완료');
+  toast('초기화 Done');
 }
 function clearAll(){
   if(!confirm('시스템 재고를 삭제할까요?')) return;
@@ -1127,7 +1225,7 @@ function showSync() {
     el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#1D9E75;color:white;padding:6px 18px;border-radius:20px;font-size:12px;font-weight:500;z-index:999;pointer-events:none;transition:opacity 0.5s;opacity:0;';
     document.body.appendChild(el);
   }
-  el.textContent = '↕ 실시간 동기화 완료';
+  el.textContent = '↕ 실시간 동기화 Done';
   el.style.opacity = '1';
   clearTimeout(el._t);
   el._t = setTimeout(() => { el.style.opacity = '0'; }, 2000);
