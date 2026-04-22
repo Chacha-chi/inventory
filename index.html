@@ -441,6 +441,7 @@ input[type=number]{-moz-appearance:textfield;}
           <button class="f-btn active" onclick="setCountStatus('all',this)">전체</button>
           <button class="f-btn" onclick="setCountStatus('done',this)">Done</button>
           <button class="f-btn" onclick="setCountStatus('todo',this)">Pending</button>
+          <button class="f-btn" id="btn-hide-zero" onclick="toggleHideZero(this)">재고 0 제외</button>
         </div>
 
         <div class="sec-hd">
@@ -611,6 +612,7 @@ let activeSetupSloc = 'ALL';
 let activeCountSloc = 'ALL';
 let activeResultSloc = 'ALL';
 let countStatusFilter = 'all';
+let hideZero = false;
 let resultFilter = 'all';
 
 const SLOC_ORDER = ['ALL','SALES','DP','HOLDING','DEFECT'];
@@ -816,7 +818,8 @@ function renderCountTable(){
     const cd=countData[key(r)];
     const done=realQty(cd)!==null;
     const matchStatus=countStatusFilter==='all'||(countStatusFilter==='done'&&done)||(countStatusFilter==='todo'&&!done);
-    return matchSloc&&matchSearch&&matchStatus;
+    const matchZero = !hideZero || r.sys > 0;
+    return matchSloc&&matchSearch&&matchStatus&&matchZero;
   });
   const done=filtered.filter(r=>realQty(countData[key(r)])!==null).length;
   document.getElementById('count-sub').textContent=`${filtered.length}개 표시 중 · ${done}개 Done`;
@@ -867,6 +870,13 @@ function setCountStatus(f,el){
   countStatusFilter=f;
   document.querySelectorAll('#panel-count .f-btn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
+  document.getElementById('btn-hide-zero').classList.toggle('active', hideZero);
+  renderCountTable();
+}
+
+function toggleHideZero(el){
+  hideZero = !hideZero;
+  el.classList.toggle('active', hideZero);
   renderCountTable();
 }
 
