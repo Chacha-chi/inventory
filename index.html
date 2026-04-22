@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>재고 조사 — Inventory Audit</title>
-<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -93,7 +92,7 @@ input::placeholder{color:var(--text3);}
 
 /* Tables */
 .table-wrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:4px;}
-table{width:100%;border-collapse:collapse;}
+table{width:100%;border-collapse:collapse;table-layout:fixed;}
 thead{background:var(--surface2);}
 th{padding:10px 14px;text-align:left;font-size:10px;letter-spacing:0.08em;color:var(--text3);font-weight:400;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
 td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);}
@@ -125,7 +124,10 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .diff-zero{color:var(--text3);font-family:var(--mono);font-size:11px;}
 
 /* Count input */
-.count-input{width:64px;padding:5px 8px;font-size:12px;text-align:center;}
+.count-input{width:80px;padding:7px 8px;font-size:13px;text-align:center;}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;}
 
 /* Summary cards */
 .summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px;}
@@ -169,12 +171,35 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
 .anim{animation:fadeIn 0.2s ease;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
-.scanning-pulse{animation:pulse 1.2s ease-in-out infinite;}
 
 ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
 
-/* ── SCAN MODE OVERLAY ── */
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: #fff !important; color: #000 !important; font-size: 12px; }
+  .sidebar, .topbar, .mobile-nav, .scan-overlay,
+  .topbar-actions, .filter-bar, .tab-row,
+  .btn, .f-btn, .sloc-filter-row, .info-box,
+  #sloc-summary-chips, .prog-wrap, .sec-hd button { display: none !important; }
+  .shell { display: block !important; }
+  .main { display: block !important; overflow: visible !important; }
+  .content { padding: 0 !important; overflow: visible !important; }
+  .panel { display: none !important; }
+  #panel-result { display: block !important; }
+  #result-main { display: block !important; }
+  #result-empty { display: none !important; }
+  .summary-grid, #sloc-totals { display: none !important; }
+  .table-wrap { border: 1px solid #ccc !important; border-radius: 0 !important; }
+  table { table-layout: fixed; width: 100%; }
+  th { background: #f0f0f0 !important; color: #000 !important; border-bottom: 1px solid #ccc !important; padding: 6px 8px !important; font-size: 11px !important; }
+  td { color: #000 !important; border-bottom: 1px solid #eee !important; padding: 6px 8px !important; font-size: 11px !important; }
+  .sloc-badge { border: 1px solid #ccc !important; color: #000 !important; background: #f5f5f5 !important; }
+  .status-badge { border: 1px solid #ccc !important; background: #f5f5f5 !important; color: #000 !important; }
+  .diff-pos, .diff-neg, .diff-zero, .code-blue, .mono { color: #000 !important; font-family: monospace !important; }
+  @page { margin: 15mm; }
+}
+
+/* ── BLUETOOTH SCAN MODE OVERLAY ── */
 .scan-overlay{display:none;position:fixed;inset:0;background:#0a0a08;z-index:100;flex-direction:column;align-items:stretch;}
 .scan-overlay.active{display:flex;}
 .scan-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -182,40 +207,109 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .scan-meta{font-size:11px;color:var(--text3);font-family:var(--mono);}
 .scan-close{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;}
 
-.scan-viewport{position:relative;flex:1;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;min-height:0;}
-#scan-video{width:100%;height:100%;object-fit:cover;}
-.scan-frame{position:absolute;width:260px;height:160px;pointer-events:none;}
-.scan-frame::before,.scan-frame::after{content:'';position:absolute;width:36px;height:36px;}
-.scan-frame::before{top:0;left:0;border-top:3px solid var(--accent);border-left:3px solid var(--accent);}
-.scan-frame::after{top:0;right:0;border-top:3px solid var(--accent);border-right:3px solid var(--accent);}
-.scan-frame-b::before,.scan-frame-b::after{content:'';position:absolute;width:36px;height:36px;}
-.scan-frame-b::before{bottom:0;left:0;border-bottom:3px solid var(--accent);border-left:3px solid var(--accent);}
-.scan-frame-b::after{bottom:0;right:0;border-bottom:3px solid var(--accent);border-right:3px solid var(--accent);}
-.scan-line{position:absolute;width:240px;height:2px;background:var(--accent);opacity:0.7;animation:scanLine 2s ease-in-out infinite;}
-@keyframes scanLine{0%{top:calc(50% - 70px);}50%{top:calc(50% + 70px);}100%{top:calc(50% - 70px);}}
-.scan-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;}
-.scan-torch{position:absolute;top:16px;right:16px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;}
-.scan-torch.on{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);}
+/* BT Scanner center area */
+.scan-bt-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:24px;}
 
-.scan-result-area{background:var(--surface);border-top:1px solid var(--border);padding:16px 20px;flex-shrink:0;}
-.scan-last{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:10px;margin-bottom:12px;min-height:56px;}
-.scan-last-icon{width:36px;height:36px;border-radius:8px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.scan-input-wrap{
+  position:relative;
+  width:100%;max-width:480px;
+}
+.scan-bt-input{
+  width:100%;
+  background:var(--surface);
+  border:2px solid var(--border2);
+  border-radius:16px;
+  padding:20px 24px;
+  font-size:20px;
+  font-family:var(--mono);
+  color:var(--text);
+  outline:none;
+  text-align:center;
+  letter-spacing:0.12em;
+  transition:border-color 0.2s, box-shadow 0.2s;
+  caret-color: var(--accent);
+}
+.scan-bt-input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 4px rgba(200,240,96,0.08);
+}
+.scan-bt-input.flash-ok{
+  border-color:var(--green);
+  box-shadow:0 0 0 4px rgba(78,203,141,0.15);
+  animation:flashOk 0.35s ease;
+}
+.scan-bt-input.flash-err{
+  border-color:var(--red);
+  box-shadow:0 0 0 4px rgba(255,107,107,0.15);
+  animation:flashErr 0.35s ease;
+}
+@keyframes flashOk{0%{background:rgba(78,203,141,0.15);}100%{background:var(--surface);}}
+@keyframes flashErr{0%{background:rgba(255,107,107,0.15);}100%{background:var(--surface);}}
+
+.scan-input-label{
+  position:absolute;top:-10px;left:16px;
+  background:var(--bg);
+  padding:0 6px;
+  font-size:10px;
+  letter-spacing:0.1em;
+  color:var(--text3);
+  text-transform:uppercase;
+  font-family:var(--mono);
+}
+
+.scan-status-icon{
+  width:80px;height:80px;
+  border-radius:20px;
+  background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;
+  transition:all 0.2s;
+}
+
+/* Scan last result */
+.scan-last{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--surface2);border-radius:12px;width:100%;max-width:480px;}
+.scan-last.not-found{background:var(--red-dim);border:1px solid rgba(255,107,107,0.2);}
+.scan-last.ok{background:var(--green-dim);border:1px solid rgba(78,203,141,0.2);}
+.scan-last-icon{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
 .scan-last-info{flex:1;min-width:0;}
 .scan-last-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .scan-last-code{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
-.scan-last-count{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--accent);flex-shrink:0;}
-.scan-last.not-found{background:var(--red-dim);}
-.scan-last.not-found .scan-last-name{color:var(--red);}
+.scan-last-count{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--accent);flex-shrink:0;}
 
-.scan-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.scan-stat{background:var(--surface2);border-radius:8px;padding:8px 10px;text-align:center;}
-.scan-stat-num{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--text);}
+/* Scan stats */
+.scan-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:480px;}
+.scan-stat{background:var(--surface2);border-radius:8px;padding:10px;text-align:center;}
+.scan-stat-num{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--text);}
 .scan-stat-num.green{color:var(--green);}
-.scan-stat-label{font-size:10px;color:var(--text3);margin-top:1px;}
+.scan-stat-label{font-size:10px;color:var(--text3);margin-top:2px;}
 
-.scan-sloc-select{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;}
+/* Scan log */
+.scan-log{width:100%;max-width:480px;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+.scan-log-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:6px;font-size:11px;animation:fadeIn 0.15s ease;}
+.scan-log-item.err{background:var(--red-dim);}
+.scan-log-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.scan-log-dot.err{background:var(--red);}
+.scan-log-code{font-family:var(--mono);color:var(--text3);flex-shrink:0;}
+.scan-log-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2);}
+.scan-log-qty{font-family:var(--mono);color:var(--accent);flex-shrink:0;}
+
+/* Sloc select */
+.scan-sloc-select{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
 .scan-sloc-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:11px;cursor:pointer;transition:all 0.15s;}
 .scan-sloc-btn.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(200,240,96,0.3);}
+
+/* BT ready indicator */
+.bt-ready-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;
+  background:var(--green-dim);
+  border:1px solid rgba(78,203,141,0.25);
+  color:var(--green);
+  font-size:11px;font-family:var(--mono);
+}
+.bt-pulse{width:7px;height:7px;border-radius:50%;background:var(--green);}
+@keyframes btPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.8);}}
+.bt-pulse{animation:btPulse 1.5s ease-in-out infinite;}
 
 /* ── MOBILE RESPONSIVE ── */
 @media(max-width:640px){
@@ -278,7 +372,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div class="meta" id="panel-meta">xlsx 파일 업로드</div>
     </div>
     <div class="topbar-actions">
-      <button class="btn sm" style="background:var(--accent);color:#0f0f0d;border-color:var(--accent);font-weight:500;" onclick="openScanMode()">📷 스캔 모드</button>
+      <button class="btn sm" style="background:var(--accent);color:#0f0f0d;border-color:var(--accent);font-weight:500;" onclick="openScanMode()">🔫 스캔 모드</button>
       <button class="btn sm" onclick="resetAll()">초기화</button>
       <button class="btn primary sm" onclick="switchPanel('result')">결과 보기</button>
     </div>
@@ -313,7 +407,6 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           <button class="btn danger sm" onclick="clearAll()">전체 삭제</button>
         </div>
 
-        <!-- sloc summary -->
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;" id="sloc-summary-chips"></div>
 
         <div class="filter-bar">
@@ -323,6 +416,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
         <div class="table-wrap">
           <table>
+            <colgroup><col style="width:40px"><col style="width:80px"><col style="width:120px"><col style="width:180px"><col style="width:120px"><col style="width:100px"><col></colgroup>
             <thead><tr><th>#</th><th>sloc</th><th>Product Code</th><th>Product Name</th><th>Barcode</th><th>스펙</th><th>시스템 재고</th></tr></thead>
             <tbody id="setup-tbody"></tbody>
           </table>
@@ -359,6 +453,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
         <div class="table-wrap">
           <table>
+            <colgroup><col style="width:70px"><col style="width:110px"><col><col style="width:90px"><col style="width:60px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:90px"></colgroup>
             <thead>
               <tr><th>sloc</th><th>Product Code</th><th>제품명</th><th>스펙</th><th>시스템</th><th>박스 수</th><th>낱개</th><th>실재고</th><th>상태</th></tr>
             </thead>
@@ -374,7 +469,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div id="result-main" style="display:none;">
 
         <div style="margin-bottom:16px;">
-          <button onclick="exportStocktaking()" style="width:100%;padding:12px;background:#1D9E75;color:white;border:none;border-radius:var(--border-radius-lg);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans);">📥 재고조사 파일 다운로드 (xlsx)</button>
+          <button onclick="exportStocktaking()" style="width:100%;padding:12px;background:#1D9E75;color:white;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans);">📥 재고조사 파일 다운로드 (xlsx)</button>
           <div style="margin-top:6px;font-size:11px;color:var(--text3);text-align:center;">storecode · slocCode · productcode · stocktakingQty · comment 형식</div>
         </div>
 
@@ -422,44 +517,65 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
 <div class="toast" id="toast"></div>
 
-<!-- SCAN OVERLAY -->
+<!-- ── BLUETOOTH SCAN OVERLAY ── -->
 <div class="scan-overlay" id="scan-overlay">
   <div class="scan-header">
     <div>
-      <div class="scan-title">📷 바코드 스캔 모드</div>
+      <div class="scan-title">🔫 블루투스 스캐너 모드</div>
       <div class="scan-meta" id="scan-sloc-label">창고: ALL</div>
     </div>
-    <button class="scan-close" onclick="closeScanMode()">닫기</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="bt-ready-badge">
+        <div class="bt-pulse"></div>
+        <span>스캐너 연결됨</span>
+      </div>
+      <button class="scan-close" onclick="closeScanMode()">닫기</button>
+    </div>
   </div>
 
-  <div class="scan-viewport">
-    <video id="scan-video" autoplay playsinline muted></video>
-    <div class="scan-frame"></div>
-    <div class="scan-frame scan-frame-b"></div>
-    <div class="scan-line scanning-pulse"></div>
-    <div class="scan-hint">바코드를 프레임 안에 맞춰주세요</div>
-    <button class="scan-torch" id="torch-btn" onclick="toggleTorch()">💡 손전등</button>
-  </div>
+  <div class="scan-bt-area">
 
-  <div class="scan-result-area">
-    <div class="scan-last" id="scan-last">
-      <div class="scan-last-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9V6a1 1 0 011-1h3M3 15v3a1 1 0 001 1h3M21 9V6a1 1 0 00-1-1h-3M21 15v3a1 1 0 01-1 1h-3"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-      </div>
-      <div class="scan-last-info">
-        <div class="scan-last-name" id="scan-last-name">스캔 대기 중...</div>
-        <div class="scan-last-code" id="scan-last-code">바코드를 카메라에 가져다 대세요</div>
-      </div>
-      <div class="scan-last-count" id="scan-last-count" style="display:none;"></div>
+    <!-- Sloc 선택 -->
+    <div class="scan-sloc-select" id="scan-sloc-select"></div>
+
+    <!-- 상태 아이콘 -->
+    <div class="scan-status-icon" id="scan-status-icon">🔫</div>
+
+    <!-- 바코드 입력 필드 -->
+    <div class="scan-input-wrap">
+      <span class="scan-input-label">바코드 / 제품코드 입력</span>
+      <input
+        type="text"
+        class="scan-bt-input"
+        id="scan-bt-input"
+        placeholder="스캐너로 스캔하거나 직접 입력..."
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      >
     </div>
 
+    <!-- 마지막 스캔 결과 -->
+    <div class="scan-last" id="scan-last" style="display:none;">
+      <div class="scan-last-icon" id="scan-last-icon">📦</div>
+      <div class="scan-last-info">
+        <div class="scan-last-name" id="scan-last-name">—</div>
+        <div class="scan-last-code" id="scan-last-code">—</div>
+      </div>
+      <div class="scan-last-count" id="scan-last-count"></div>
+    </div>
+
+    <!-- 통계 -->
     <div class="scan-stats-row">
       <div class="scan-stat"><div class="scan-stat-num green" id="sc-scanned">0</div><div class="scan-stat-label">스캔 Done</div></div>
       <div class="scan-stat"><div class="scan-stat-num" id="sc-total">0</div><div class="scan-stat-label">전체 SKU</div></div>
       <div class="scan-stat"><div class="scan-stat-num" id="sc-notfound">0</div><div class="scan-stat-label">미등록 바코드</div></div>
     </div>
 
-    <div class="scan-sloc-select" id="scan-sloc-select"></div>
+    <!-- 스캔 로그 -->
+    <div class="scan-log" id="scan-log"></div>
+
   </div>
 </div>
 
@@ -489,8 +605,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ─── STATE ───────────────────────────────────────────
-let stockData = [];       // [{sloc, productCode, productName, barcode, spec, sys, storeName}]
-let countData = {};       // key: `${sloc}__${productCode}` → {boxes:'', loose:''}
+let stockData = [];
+let countData = {};
 let activeSetupSloc = 'ALL';
 let activeCountSloc = 'ALL';
 let activeResultSloc = 'ALL';
@@ -501,7 +617,6 @@ const SLOC_ORDER = ['ALL','SALES','DP','HOLDING','DEFECT'];
 const SLOC_COLOR = {SALES:'green',DP:'blue',HOLDING:'amber',DEFECT:'red'};
 
 // ─── UTILS ───────────────────────────────────────────
-function pad(n){return String(n).padStart(2,'0');}
 function toast(msg, type=''){
   const el=document.getElementById('toast');
   if(!el) return;
@@ -531,7 +646,6 @@ function updateSidebar(){
 }
 
 function slocBadge(sloc){
-  const cls=SLOC_COLOR[sloc]||'';
   return `<span class="sloc-badge sloc-${sloc}">${sloc}</span>`;
 }
 
@@ -582,10 +696,8 @@ function processFile(file){
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
       if(!rows.length){toast('데이터가 없습니다','error');return;}
 
-      // Detect columns flexibly
       const sample=rows[0];
       const keys=Object.keys(sample);
-      const findCol=(candidates)=>candidates.find(c=>keys.some(k=>k.toLowerCase().includes(c.toLowerCase())))||null;
 
       const colSloc   = keys.find(k=>k.toLowerCase().includes('sloc name'))||keys.find(k=>k.toLowerCase().includes('slocname'))||'sloc Name';
       const colPCode  = keys.find(k=>k.toLowerCase().includes('product code'))||'Product Code';
@@ -608,12 +720,13 @@ function processFile(file){
         const storeCode=String(r[colStoreCode]||'').trim();
         if(productCode) stockData.push({sloc,productCode,productName,barcode,sys,spec,storeName,storeCode});
       });
+      stockData.sort((a,b)=>a.productName.localeCompare(b.productName, 'en'));
 
       renderSetupLoaded();
       buildSlocFilters();
       renderSetupTable();
       updateSidebar();
-      toast(`${stockData.length}개 항목 불러옴 — 다른 기기와 공유 중...`,'success');
+      toast(`${stockData.length}개 항목 불러옴`,'success');
       if(window.fbSendStock) window.fbSendStock(stockData);
     }catch(err){toast('파일 읽기 오류: '+err.message,'error');}
   };
@@ -622,7 +735,6 @@ function processFile(file){
 
 function buildSlocFilters(){
   const slocs=['ALL',...new Set(stockData.map(r=>r.sloc).filter(Boolean).sort())];
-  // Setup filter
   const sf=document.getElementById('setup-sloc-filter');
   sf.innerHTML='';
   slocs.forEach(s=>{
@@ -634,16 +746,15 @@ function buildSlocFilters(){
     sf.appendChild(btn);
   });
 
-  // Sloc summary chips
   const sc=document.getElementById('sloc-summary-chips');
   sc.innerHTML='';
   ['SALES','DP','HOLDING','DEFECT'].forEach(s=>{
     const cnt=stockData.filter(r=>r.sloc===s).length;
     if(!cnt) return;
-    const sys=stockData.filter(r=>r.sloc===s).reduce((a,b)=>a+b.sys,0);
-    sc.innerHTML+=`<div style="background:var(--surface2);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
+    sc.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
       ${slocBadge(s)}
-      <span style="font-size:12px;color:var(--text2)">${cnt}개 라인 · 시스템 합계 <span style="color:var(--text);font-family:var(--mono)">${sys.toLocaleString()}</span></span>
+      <span style="font-size:12px;color:var(--text3);">총</span>
+      <span style="font-family:var(--mono);font-size:13px;color:var(--text);">${cnt.toLocaleString()} SKU</span>
     </div>`;
   });
 }
@@ -724,11 +835,11 @@ function renderCountTable(){
       <td class="mono">${r.sys.toLocaleString()}</td>
       <td><input type="number" class="count-input" min="0" placeholder="0" value="${cd.boxes}"
           style="border-color:${counted?'rgba(200,240,96,0.35)':''}"
-          onchange="updateCount('${k}','boxes',this.value)"></td>
+          oninput="updateCount('${k}','boxes',this.value)"></td>
       <td><input type="number" class="count-input" min="0" placeholder="0" value="${cd.loose}"
           style="border-color:${counted?'rgba(200,240,96,0.35)':''}"
-          onchange="updateCount('${k}','loose',this.value)"></td>
-      <td class="mono" style="color:${counted?'var(--accent)':'var(--text3)'}">
+          oninput="updateCount('${k}','loose',this.value)"></td>
+      <td class="mono" style="color:${counted?'var(--accent)':'var(--text3)'}" id="realqty-${k}">
         ${counted?rq.toLocaleString():'—'}
       </td>
       <td>${statusBadge(r.sys,rq)}</td>
@@ -741,6 +852,13 @@ function renderCountTable(){
 function updateCount(k, field, val){
   if(!countData[k]) countData[k]={boxes:'',loose:''};
   countData[k][field]=val===''?'':parseInt(val)||0;
+  // 실재고 셀 즉시 업데이트
+  const rq = realQty(countData[k]);
+  const cell = document.getElementById('realqty-'+k);
+  if(cell){
+    cell.textContent = rq !== null ? rq.toLocaleString() : '—';
+    cell.style.color = rq !== null ? 'var(--accent)' : 'var(--text3)';
+  }
   updateSidebar();
   if(window.fbSendCount) window.fbSendCount(k, countData[k].boxes, countData[k].loose);
 }
@@ -818,14 +936,13 @@ function renderSlocTotals(){
     const shortCnt=rows.filter(r=>{const rq=realQty(countData[key(r)]);return rq!==null&&rq<r.sys;}).length;
     const overCnt=rows.filter(r=>{const rq=realQty(countData[key(r)]);return rq!==null&&rq>r.sys;}).length;
     const pct=Math.round(counted/total*100);
-    const barW=pct+'%';
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--border-radius-lg);padding:12px 14px;">
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <span style="background:${bgColors[s]};color:${textColors[s]};font-size:11px;font-weight:500;padding:3px 10px;border-radius:4px;font-family:var(--mono);">${s}</span>
         <span style="font-family:var(--mono);font-size:12px;color:var(--text2);">${counted}<span style="color:var(--text3);">/${total} SKU</span></span>
       </div>
       <div style="background:var(--surface2);border-radius:999px;height:5px;margin-bottom:10px;overflow:hidden;">
-        <div style="height:100%;border-radius:999px;background:${textColors[s]};width:${barW};transition:width 0.4s;"></div>
+        <div style="height:100%;border-radius:999px;background:${textColors[s]};width:${pct}%;transition:width 0.4s;"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;text-align:center;">
         <div style="background:var(--surface2);border-radius:6px;padding:5px 4px;">
@@ -912,11 +1029,7 @@ function exportCSV(mode){
 
 function exportStocktaking(){
   if(!stockData.length){ toast('먼저 시스템 재고를 불러오세요','error'); return; }
-
-  // storecode: from first row's storeName or 'JP1004'
   const storeCode = stockData[0]?.storeCode || stockData[0]?.storeName || '';
-
-  // Build rows: one row per stockData line
   const rows = stockData.map(r => {
     const cd = countData[key(r)];
     const rq = realQty(cd);
@@ -928,25 +1041,15 @@ function exportStocktaking(){
       comment: rq === null ? 'Not counted' : rq === r.sys ? '' : rq > r.sys ? 'Over +'+(rq-r.sys) : 'Short '+(rq-r.sys)
     };
   });
-
-  // Build xlsx using SheetJS
   if(typeof XLSX === 'undefined'){ toast('XLSX 라이브러리 로딩 중, 잠시 후 다시 시도해주세요','error'); return; }
-
   const wsData = [
     ['storecode','slocCode','productcode','stocktakingQty','comment'],
     ...rows.map(r => [r.storecode, r.slocCode, r.productcode, r.stocktakingQty, r.comment])
   ];
-
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Column widths
-  ws['!cols'] = [
-    {wch:14},{wch:12},{wch:14},{wch:16},{wch:20}
-  ];
-
+  ws['!cols'] = [{wch:14},{wch:12},{wch:14},{wch:16},{wch:20}];
   XLSX.utils.book_append_sheet(wb, ws, 'stocktaking');
-
   const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
   XLSX.writeFile(wb, `stocktaking_${date}.xlsx`);
   toast('재고조사 파일 다운로드 Done','success');
@@ -966,7 +1069,6 @@ function clearAll(){
   updateSidebar();
 }
 
-// ─── MOBILE NAV ──────────────────────────────────────
 function updateMobileNav(p){
   ['setup','count','result'].forEach(s=>{
     const el=document.getElementById('mnav-'+s);
@@ -974,21 +1076,24 @@ function updateMobileNav(p){
   });
 }
 
-// ─── SCAN MODE ───────────────────────────────────────
-let scanStream=null, scanControls=null, torchTrack=null;
-let torchOn=false, scanSloc='ALL', notFoundCount=0;
-let lastBarcode='', lastBarcodeTime=0;
+// ─── BLUETOOTH SCAN MODE ─────────────────────────────
+let scanSloc = 'ALL';
+let notFoundCount = 0;
+let scanLog = [];
 
 function openScanMode(){
-  if(!stockData.length){toast('먼저 xlsx 파일을 불러와주세요','error');return;}
+  if(!stockData.length){ toast('먼저 xlsx 파일을 불러와주세요','error'); return; }
   document.getElementById('scan-overlay').classList.add('active');
   buildScanSlocSelect();
   updateScanStats();
-  startCamera();
+  // 오버레이 열리면 입력창에 자동 포커스
+  setTimeout(()=>{
+    const inp = document.getElementById('scan-bt-input');
+    if(inp) inp.focus();
+  }, 100);
 }
 
 function closeScanMode(){
-  stopCamera();
   document.getElementById('scan-overlay').classList.remove('active');
 }
 
@@ -1000,173 +1105,140 @@ function buildScanSlocSelect(){
     const btn=document.createElement('button');
     btn.className='scan-sloc-btn'+(s===scanSloc?' active':'');
     btn.textContent=s;
-    btn.onclick=()=>{scanSloc=s;buildScanSlocSelect();document.getElementById('scan-sloc-label').textContent='창고: '+s;};
+    btn.onclick=()=>{
+      scanSloc=s;
+      buildScanSlocSelect();
+      document.getElementById('scan-sloc-label').textContent='창고: '+s;
+      // 창고 변경 후 다시 포커스
+      setTimeout(()=>document.getElementById('scan-bt-input')?.focus(), 50);
+    };
     el.appendChild(btn);
   });
 }
 
-async function startCamera(){
-  try{
-    const constraints={
-      video:{
-        facingMode:{ideal:'environment'},
-        width:{ideal:1280},height:{ideal:720},
-        focusMode:{ideal:'continuous'}
+// 블루투스 스캐너: Enter 키 감지해서 처리
+document.addEventListener('DOMContentLoaded', ()=>{
+  const input = document.getElementById('scan-bt-input');
+  if(!input) return;
+
+  // 스캐너는 입력 후 자동으로 Enter를 보냄
+  input.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const barcode = input.value.trim();
+      if(barcode){
+        onBarcodeScanned(barcode);
+        input.value = '';
+        input.select();
       }
-    };
-    scanStream=await navigator.mediaDevices.getUserMedia(constraints);
-    const video=document.getElementById('scan-video');
-    video.srcObject=scanStream;
-    await video.play();
-
-    // Store torch track
-    const tracks=scanStream.getVideoTracks();
-    if(tracks.length) torchTrack=tracks[0];
-
-    // Start Quagga2 decode loop
-    startDecodeLoop(video);
-  }catch(e){
-    toast('카메라 접근 오류: '+e.message,'error');
-    document.getElementById('scan-last-name').textContent='카메라를 사용할 수 없습니다';
-    document.getElementById('scan-last-code').textContent=e.message;
-  }
-}
-
-function stopCamera(){
-  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
-  if(scanControls){try{scanControls.stop();}catch(e){}scanControls=null;}
-  torchTrack=null; torchOn=false;
-  document.getElementById('torch-btn').classList.remove('on');
-}
-
-async function toggleTorch(){
-  if(!torchTrack) return;
-  try{
-    torchOn=!torchOn;
-    await torchTrack.applyConstraints({advanced:[{torch:torchOn}]});
-    document.getElementById('torch-btn').classList.toggle('on',torchOn);
-  }catch(e){toast('손전등 미지원 기기입니다','error');torchOn=false;}
-}
-
-// Decode loop using Quagga2 (better iOS Safari support)
-function startDecodeLoop(video){
-  if(typeof Quagga==='undefined'){
-    toast('스캔 라이브러리 로딩 실패. 새로고침 해주세요.','error');return;
-  }
-
-  const viewport = document.getElementById('scan-viewport');
-
-  Quagga.init({
-    inputStream:{
-      type:'LiveStream',
-      target: viewport,
-      constraints:{
-        facingMode:'environment',
-        width:{ideal:1280},
-        height:{ideal:720},
-      },
-    },
-    locator:{ patchSize:'medium', halfSample:true },
-    numOfWorkers: 0,
-    frequency: 10,
-    decoder:{
-      readers:[
-        'ean_reader',
-        'ean_8_reader',
-        'code_128_reader',
-        'code_39_reader',
-        'upc_reader',
-      ],
-      multiple: false,
-    },
-    locate: true,
-  }, function(err){
-    if(err){
-      toast('스캐너 초기화 실패: '+err,'error');
-      return;
     }
-    Quagga.start();
-    // Hide quagga's own video since we have our own
-    const qVideo = viewport.querySelector('video');
-    if(qVideo && qVideo !== video){
-      qVideo.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;';
-    }
-    const canvas = viewport.querySelector('canvas.drawingBuffer');
-    if(canvas) canvas.style.display='none';
   });
 
-  Quagga.onDetected(function(data){
-    const barcode = data.codeResult.code;
-    if(!barcode) return;
-    const now = Date.now();
-    if(barcode===lastBarcode && now-lastBarcodeTime<1500) return;
-    lastBarcode = barcode;
-    lastBarcodeTime = now;
-    onBarcodeScanned(barcode);
+  // 스캔 오버레이가 열려 있을 때 키보드 입력이 다른 곳으로 가지 않도록
+  // overlay 클릭 시 항상 input으로 포커스
+  document.getElementById('scan-overlay').addEventListener('click', (e)=>{
+    const tag = e.target.tagName.toLowerCase();
+    if(tag !== 'button' && tag !== 'input'){
+      input.focus();
+    }
   });
-
-  scanControls = { stop: ()=>{ try{ Quagga.stop(); }catch(e){} } };
-}
+});
 
 function onBarcodeScanned(barcode){
-  // Vibrate feedback
   if(navigator.vibrate) navigator.vibrate(60);
 
-  // Find matching product (barcode or productCode)
-  const matches=stockData.filter(r=>{
-    const slocMatch=scanSloc==='ALL'||r.sloc===scanSloc;
-    return slocMatch&&(r.barcode===barcode||r.productCode===barcode);
+  const matches = stockData.filter(r=>{
+    const slocMatch = scanSloc==='ALL' || r.sloc===scanSloc;
+    return slocMatch && (r.barcode===barcode || r.productCode===barcode);
   });
 
-  const lastEl=document.getElementById('scan-last');
-  const nameEl=document.getElementById('scan-last-name');
-  const codeEl=document.getElementById('scan-last-code');
-  const countEl=document.getElementById('scan-last-count');
+  const input = document.getElementById('scan-bt-input');
+  const lastEl = document.getElementById('scan-last');
+  const iconEl = document.getElementById('scan-status-icon');
 
   if(!matches.length){
-    // Not found
     notFoundCount++;
-    lastEl.className='scan-last not-found';
-    nameEl.textContent='등록되지 않은 바코드';
-    codeEl.textContent=barcode;
-    countEl.style.display='none';
+    // 에러 플래시
+    input.classList.remove('flash-ok');
+    input.classList.add('flash-err');
+    setTimeout(()=>input.classList.remove('flash-err'), 400);
+    iconEl.textContent = '❌';
+    setTimeout(()=>iconEl.textContent='🔫', 1000);
+
+    lastEl.className = 'scan-last not-found';
+    lastEl.style.display = 'flex';
+    document.getElementById('scan-last-icon').textContent = '⚠️';
+    document.getElementById('scan-last-name').textContent = '등록되지 않은 바코드';
+    document.getElementById('scan-last-code').textContent = barcode;
+    document.getElementById('scan-last-count').textContent = '';
+
+    addScanLog(barcode, null, null, true);
     updateScanStats();
     return;
   }
 
-  // Found — increment loose count for all matching sloc rows
+  // 찾음 — loose +1
   matches.forEach(r=>{
-    const k=key(r);
-    if(!countData[k]) countData[k]={boxes:0,loose:0};
-    if(countData[k].loose==='') countData[k].loose=0;
-    countData[k].loose=parseInt(countData[k].loose||0)+1;
+    const k = key(r);
+    if(!countData[k]) countData[k] = {boxes:0, loose:0};
+    if(countData[k].loose === '') countData[k].loose = 0;
+    countData[k].loose = parseInt(countData[k].loose||0) + 1;
   });
 
-  const r=matches[0];
-  const k=key(r);
-  const total=realQty(countData[k]);
+  const r = matches[0];
+  const k = key(r);
+  const total = realQty(countData[k]);
 
-  lastEl.className='scan-last anim';
-  nameEl.textContent=r.productName;
-  codeEl.textContent=`${r.productCode} · ${r.sloc} · ${r.spec||''}`;
-  countEl.textContent=total;
-  countEl.style.display='block';
+  // 성공 플래시
+  input.classList.remove('flash-err');
+  input.classList.add('flash-ok');
+  setTimeout(()=>input.classList.remove('flash-ok'), 400);
+  iconEl.textContent = '✅';
+  setTimeout(()=>iconEl.textContent='🔫', 800);
 
+  lastEl.className = 'scan-last ok anim';
+  lastEl.style.display = 'flex';
+  document.getElementById('scan-last-icon').textContent = '📦';
+  document.getElementById('scan-last-name').textContent = r.productName;
+  document.getElementById('scan-last-code').textContent = `${r.productCode} · ${r.sloc}${r.spec?' · '+r.spec:''}`;
+  document.getElementById('scan-last-count').textContent = total;
+
+  addScanLog(barcode, r, total, false);
   updateScanStats();
   updateSidebar();
+
   if(window.fbSendCount) window.fbSendCount(k, countData[k].boxes, countData[k].loose);
+
+  // count 패널도 열려있으면 갱신
+  const ap = document.querySelector('.panel.active');
+  if(ap?.id === 'panel-count') renderCountTable();
+}
+
+function addScanLog(barcode, row, qty, isErr){
+  const log = document.getElementById('scan-log');
+  if(!log) return;
+  const item = document.createElement('div');
+  item.className = 'scan-log-item' + (isErr?' err':'');
+  if(isErr){
+    item.innerHTML = `<div class="scan-log-dot err"></div><span class="scan-log-code">${barcode}</span><span class="scan-log-name" style="color:var(--red)">미등록</span>`;
+  } else {
+    item.innerHTML = `<div class="scan-log-dot"></div><span class="scan-log-code">${row.productCode}</span><span class="scan-log-name">${row.productName}</span><span class="scan-log-qty">×${qty}</span>`;
+  }
+  log.insertBefore(item, log.firstChild);
+  // 최대 20개만 유지
+  while(log.children.length > 20) log.removeChild(log.lastChild);
 }
 
 function updateScanStats(){
-  const rows=stockData.filter(r=>scanSloc==='ALL'||r.sloc===scanSloc);
-  const scanned=rows.filter(r=>realQty(countData[key(r)])!==null).length;
-  document.getElementById('sc-scanned').textContent=scanned;
-  document.getElementById('sc-total').textContent=rows.length;
-  document.getElementById('sc-notfound').textContent=notFoundCount;
+  const rows = stockData.filter(r=>scanSloc==='ALL'||r.sloc===scanSloc);
+  const scanned = rows.filter(r=>realQty(countData[key(r)])!==null).length;
+  document.getElementById('sc-scanned').textContent = scanned;
+  document.getElementById('sc-total').textContent = rows.length;
+  document.getElementById('sc-notfound').textContent = notFoundCount;
 }
 
 // Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', ()=>{
   const dateEl = document.getElementById('session-date');
   if(dateEl) dateEl.textContent = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
   updateSidebar();
@@ -1191,12 +1263,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 세션 ID: 오늘 날짜 기준 (당일 조사 전원 공유)
 const TODAY = new Date().toISOString().slice(0,10).replace(/-/g,'');
 const SESSION = 'session_' + TODAY;
 window._fbReady = true;
 
-// ── 실재고 카운트 실시간 수신 ────────────────────────────
 onValue(ref(db, SESSION + '/counts'), (snapshot) => {
   const data = snapshot.val();
   if(!data) return;
@@ -1219,7 +1289,6 @@ onValue(ref(db, SESSION + '/counts'), (snapshot) => {
   }
 });
 
-// ── 시스템 재고 수신 (한 명 업로드 → 전원 공유) ──────────
 onValue(ref(db, SESSION + '/stock'), (snapshot) => {
   const data = snapshot.val();
   if(!data || stockData.length > 0) return;
@@ -1231,7 +1300,6 @@ onValue(ref(db, SESSION + '/stock'), (snapshot) => {
   toast('다른 기기에서 공유된 재고 데이터 수신', 'success');
 });
 
-// ── 전송 함수 (window 노출) ────────────────────────────
 window.fbSendCount = function(k, boxes, loose) {
   if(!window._fbReady) return;
   const payload = {};
