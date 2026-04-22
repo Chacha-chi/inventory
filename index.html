@@ -1037,18 +1037,22 @@ function exportStocktaking(){
       storecode: storeCode,
       slocCode: r.sloc,
       productcode: r.productCode,
+      productName: r.productName,
+      spec: r.spec,
+      systemQty: r.sys,
       stocktakingQty: rq !== null ? rq : '',
-      comment: rq === null ? 'Not counted' : rq === r.sys ? '' : rq > r.sys ? 'Over +'+(rq-r.sys) : 'Short '+(rq-r.sys)
+      diff: rq !== null ? rq - r.sys : '',
+      comment: rq === null ? 'Not counted' : rq === r.sys ? 'Match' : rq > r.sys ? 'Over +'+(rq-r.sys) : 'Short '+(rq-r.sys)
     };
   });
   if(typeof XLSX === 'undefined'){ toast('XLSX 라이브러리 로딩 중, 잠시 후 다시 시도해주세요','error'); return; }
   const wsData = [
-    ['storecode','slocCode','productcode','stocktakingQty','comment'],
-    ...rows.map(r => [r.storecode, r.slocCode, r.productcode, r.stocktakingQty, r.comment])
+    ['storecode','slocCode','productcode','productName','spec','systemQty','stocktakingQty','diff','comment'],
+    ...rows.map(r => [r.storecode, r.slocCode, r.productcode, r.productName, r.spec, r.systemQty, r.stocktakingQty, r.diff, r.comment])
   ];
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:14},{wch:12},{wch:14},{wch:16},{wch:20}];
+  ws['!cols'] = [{wch:14},{wch:10},{wch:14},{wch:30},{wch:14},{wch:12},{wch:14},{wch:8},{wch:20}];
   XLSX.utils.book_append_sheet(wb, ws, 'stocktaking');
   const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
   XLSX.writeFile(wb, `stocktaking_${date}.xlsx`);
